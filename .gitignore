@@ -133,13 +133,12 @@ src/static/upload/
 src/tests/forTestHook.py
 src/online_preboot.sh
 src/.qiniu_pythonsdk_hostscache.json
+.cfg
 .DS_Store
-.cfg.DS_Store
 
 # client
 node_modules
 dist/
-
 
 # local env files
 .env.local

@@ -1,9 +1,5 @@
 @import url('https://static.saintic.com/iconfont/iconfont.min.css');
 
-a {
-    text-decoration: none;
-}
-
 /*强调色—成功*/
 .is-success,
 .is-success a,

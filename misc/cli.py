@@ -111,25 +111,28 @@ if __name__ == "__main__":
         description='More docs to https://picbed.rtfd.vip/usage.html#cli-py',
         formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("-u", "--picbed-url",
-                        help=(
-                            "The picbed upload api url.\n"
-                            "Or use environment variable: picbed_cli_apiurl"
-                        ))
-    parser.add_argument("-t", "--picbed-token",
-                        help=(
-                            "The picbed LinkToken.\n"
-                            "Or use environment variable: picbed_cli_apitoken"
-                        ))
+    parser.add_argument(
+        "-u", "--picbed-url",
+        help=(
+            "The picbed upload api url.\n"
+            "Or use environment variable: picbed_cli_apiurl"
+        ))
+    parser.add_argument(
+        "-t", "--picbed-token",
+        help=(
+            "The picbed LinkToken.\n"
+            "Or use environment variable: picbed_cli_apitoken"
+        ))
     parser.add_argument("-a", "--album", help="Set image album")
     parser.add_argument("-d", "--desc", help="Set image title(description)")
     parser.add_argument("-e", "--expire", type=int,
                         help="Set image expire(seconds)")
-    parser.add_argument("-s", "--style", default="default", type=style_type,
-                        help=(
-                            "The upload result output style: { %s }.\n"
-                            "Or, allows the use of \"module.function\" to "
-                            "customize the output style."
-                        ) % ", ".join(allowed_style))
+    parser.add_argument(
+        "-s", "--style", default="default", type=style_type,
+        help=(
+            "The upload result output style: { %s }.\n"
+            "Or, allows the use of \"module.function\" to "
+            "customize the output style."
+        ) % ", ".join(allowed_style))
     parser.add_argument("file", nargs="+", help="Local file")
     main(parser)

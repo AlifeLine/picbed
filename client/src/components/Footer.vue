@@ -4,7 +4,7 @@
             <img class="beian" :src="beian_url" />
             {{ beian }}
         </a>
-        <a href="http://www.beian.miit.gov.cn" target="_blank" v-if="icp">{{ icp }}</a>
+        <a href="http://beian.miit.gov.cn" target="_blank" v-if="icp">{{ icp }}</a>
         Copyright &copy; {{ year }} All rights reserved.
         Powered by
         <a
@@ -18,7 +18,6 @@
 <script>
 export default {
     name: 'Footer',
-    props: ['icp', 'beian'],
     data() {
         return {
             beian_url: require('@/assets/img/beian.png')
@@ -27,6 +26,12 @@ export default {
     computed: {
         year() {
             return new Date().getFullYear()
+        },
+        icp() {
+            return this.$store.state.icp
+        },
+        beian() {
+            return this.$store.state.beian
         }
     }
 }
@@ -35,6 +40,7 @@ export default {
 <style>
 .footer a {
     color: #666;
+    text-decoration: none;
 }
 .footer a:hover {
     color: #777;

@@ -1,5 +1,13 @@
 import Vue from 'vue'
-import { axios, getStorage, isValidMap, isObject } from './util.js'
+import { Message } from 'element-ui'
+import {
+    http,
+    getStorage,
+    setStorage,
+    clearStorage,
+    isValidMap,
+    isObject
+} from './util.js'
 
 export const state = Vue.observable(
     Object.assign(
@@ -7,56 +15,59 @@ export const state = Vue.observable(
             // app state
             isLogin: false,
             isAdmin: false,
-            sessionId: '',
             // system config
+            icp: '',
             beian: '',
-            bg_mg: '',
-            bg_mobile: '',
+            bg: '',
+            bgMobile: '',
             bulletin: '',
             favicon: '',
             logo: '',
-            site_name: '',
+            sitename: '',
             // userinfo
             avatar: '',
             email: '',
             nickname: '',
             username: ''
         },
-        getStorage('picbed-global-state')
+        getStorage()
     )
 )
 
 export const mutations = {
-    setLogin: sessionId => {
+    setLogin(sessionId, expire) {
         state.isLogin = true
-        state.sessionId = sessionId
+        setStorage('sid', sessionId, expire)
     },
-    clearLogin: () => (state.isLogin = false),
+    clearLogin() {
+        state.isLogin = false
+        clearStorage('sid')
+    },
     updateLogin: v => (state.isLogin = Boolean(v)),
     changeLogin: () => (state.isLogin = !state.isLogin)
 }
 
 export const actions = {
-    fetchConfig: () => {
-        //axios get public config
-        axios
-            .get('/spa')
+    fetchConfig() {
+        //get public config
+        http.get('/spa')
             .then(function(res) {
                 console.log(res.data)
                 Object.keys(res.data).forEach(key => {
                     state[key] = res.data[key]
                 })
+                setStorage('picbed-global-state', { ...state })
             })
             .catch(function(e) {
                 console.error(e)
-                //show error message on page
+                Message.error('请求应用配置错误，请刷新重试！')
             })
     }
 }
 
 /**
  * 将特定格式的Array|Object转化为Array
- * @param {Array} map: 状态字段，可以嵌套Object
+ * @param {Array} map 状态字段，可以嵌套Object
  */
 function normalizeMap(map) {
     if (isObject(map)) map = [map]
@@ -73,13 +84,12 @@ function normalizeMap(map) {
 
 /**
  * 获取需要的状态数据对象
- * @param {String, Array, Object} sts: 状态字段
+ * @param {String | Array | Object} sts 状态字段
  * @returns {Object}
  */
 export const mapState = sts => {
     if (typeof sts === 'string') sts = [sts]
     if (!isValidMap(sts)) throw Error('Invalid type')
-
     const res = {}
     normalizeMap(sts).forEach(({ key, val }) => {
         res[key] = function mappedState() {

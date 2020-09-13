@@ -26,8 +26,10 @@
                     placeholder="密码"
                 ></el-input>
             </el-form-item>
-            <el-checkbox v-model="checked" class="rememberme">记住密码</el-checkbox>
-            <el-link type="info" class="forgot" href="https://picbed.pro">忘记密码？</el-link>
+            <el-form-item>
+                <el-checkbox v-model="checked" class="rememberme">记住我</el-checkbox>
+                <el-link type="info" class="forgot" href="https://picbed.pro">忘记密码？</el-link>
+            </el-form-item>
             <el-form-item style="width:100%;">
                 <el-button
                     type="primary"
@@ -42,6 +44,7 @@
 
 <script>
 export default {
+    name: 'Login',
     data() {
         return {
             logining: false,
@@ -80,18 +83,22 @@ export default {
                             remember: this.checked
                         })
                         .then(res => {
-                            console.log(res)
+                            this.logining = false
                             if (res.data.code === 0) {
-                                this.logining = false
                                 this.$message.success('登录成功')
-                                this.$store.mutations.setLogin(res.data.sid)
+                                this.$store.mutations.setLogin(
+                                    res.data.sid,
+                                    res.data.expire
+                                )
+                                this.$store.actions.fetchConfig()
                                 this.$router.push({ path: '/' })
+                            } else {
+                                this.$message.info(res.data.msg)
                             }
                         })
-                        .catch(err => {
-                            console.log(err)
+                        .catch(e => {
                             this.logining = false
-                            this.$message.error(err)
+                            this.$message.error(e)
                         })
                 } else {
                     console.log('error submit!')
@@ -118,7 +125,6 @@ export default {
     float: right;
 }
 .login-area .rememberme {
-    margin: 0px 0px 15px;
     text-align: left;
     float: left;
 }

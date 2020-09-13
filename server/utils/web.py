@@ -73,7 +73,9 @@ def default_login_auth(dSid=None):
 
     :returns: (signin:boolean, userinfo:dict)
     """
-    sid = request.cookies.get("dSid") or dSid or ""
+    sid = request.cookies.get(
+        "dSid", parse_authorization("Cookie")
+    ) or dSid or ""
     signin = False
     userinfo = {}
     try:
@@ -780,3 +782,9 @@ def allowed_suffix(filename):
         allowed_file,
         suffix=parse_valid_verticaline(g.cfg.upload_exts)
     )(filename)
+
+
+def parse_authorization(prefix="Token"):
+    auth = request.headers.get("Authorization")
+    if auth and auth.startswith("%s " % prefix):
+        return auth.lstrip("%s " % prefix)

@@ -81,7 +81,6 @@ def after_request(res):
                 res.headers.add("Access-Control-Allow-Origin", origin)
     res.headers['X-Content-Type-Options'] = 'nosniff'
     res.headers['X-Frame-Options'] = 'SAMEORIGIN'
-    res.headers['Access-Control-Allow-Credentials'] = 'true'
     return res
 
 

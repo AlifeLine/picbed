@@ -1,14 +1,14 @@
 import Vue from 'vue'
 import App from './App.vue'
 import ElementUI from 'element-ui'
-import './assets/css/global.css'
 import 'element-ui/lib/theme-chalk/index.css'
-import router from './router.js'
-import store from './store.js'
-import { axios } from './util.js'
+import './assets/css/global.css'
+import router from './libs/router.js'
+import store from './libs/store.js'
+import { http } from './libs/util.js'
 
 Vue.use(ElementUI)
-Vue.prototype.$http = axios
+Vue.prototype.$http = http
 Vue.prototype.$store = store
 Vue.config.productionTip = false
 

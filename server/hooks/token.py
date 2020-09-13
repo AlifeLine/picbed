@@ -19,6 +19,7 @@ from flask import request, g
 from base64 import urlsafe_b64decode as b64decode
 from utils.tool import rsp, hmac_sha256, logger, get_current_timestamp, \
     parse_valid_comma, Attribution, ALLOWED_RULES, is_true, parse_ua
+from utils.web import parse_authorization
 from utils._compat import PY2, text_type
 
 intpl_profile = """
@@ -46,12 +47,6 @@ intpl_profile = """
 """
 
 intpl_before_usersetting = '<table id="linktokenTable" class="layui-table" lay-filter="linktokenTable"></table>'
-
-
-def parse_authorization(prefix="Token"):
-    auth = request.headers.get("Authorization")
-    if auth and auth.startswith("%s " % prefix):
-        return auth.lstrip("%s " % prefix)
 
 
 def get_origin():

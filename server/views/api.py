@@ -58,24 +58,34 @@ def index():
 @bp.route("/spa")
 def spa():
     """返回SPA所需应用公共系统信息，如果登录同时返回用户信息"""
-    sysfield = (
-        "site_name", "title_name", "favicon", "logo", "bg_mg",
-        "bg_mobile", "beian", "bulletin"
-    )
+    sysfield = {
+        "title_name": "sitename",
+        "favicon": "favicon",
+        "logo": "logo",
+        "bg_mg": "bg",
+        "bg_mobile": "bgMobile",
+        "beian": "beian",
+        "bulletin": "bulletin"
+    }
     userfiled = (
         "avatar", "email", "nickname", "username"
     )
     info = dict(
         isLogin=g.signin,
-        isAdmin=g.is_admin
+        isAdmin=g.is_admin,
+        username=""
     )
     info.update({
-        k: v
+        sysfield[k]: v
         for k, v in iteritems(get_site_config())
         if k in sysfield
     })
-    if "site_name" not in info:
-        info["site_name"] = info.pop("title_name", "picbed")
+    beian = parse_valid_comma(info.get(sysfield["beian"], ""))
+    if len(beian) == 2:
+        icp, beian = beian
+        info.update(icp=icp, beian=beian)
+    else:
+        info.update(icp=beian[0], beian="")
     if g.signin:
         info.update({
             k: v
@@ -88,13 +98,14 @@ def spa():
 @bp.route("/login", methods=["POST"])
 def login():
     res = dict(code=1, msg=None)
-    usr = request.form.get("username")
-    pwd = request.form.get("password")
+    data = request.json or request.form
+    usr = data.get("username")
+    pwd = data.get("password")
     #: 定义是否设置cookie状态
-    set_state = is_true(request.form.get("set_state"))
+    set_state = is_true(data.get("set_state"))
     is_secure = False if request.url_root.split("://")[0] == "http" else True
     max_age = 7200
-    if is_true(request.form.get("remember")):
+    if is_true(data.get("remember")):
         #: Remember me 7d
         max_age = 604800
     #: 登录接口钩子
@@ -173,8 +184,9 @@ def register():
         return abort(404)
     res = dict(code=1, msg=None)
     #: Required fields
-    username = request.form.get("username")
-    password = request.form.get("password")
+    data = request.json or request.form
+    username = data.get("username")
+    password = data.get("password")
     if username and password:
         username = username.lower()
         if check_username(username):

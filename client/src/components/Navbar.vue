@@ -7,12 +7,12 @@
         </div>
         <div class="nav-right">
             <div v-if="isLogin">
-                <el-menu default-active="2" mode="horizontal">
+                <el-menu mode="horizontal" router :default-active="this.$route.path">
                     <el-menu-item index="1">
                         <el-avatar class="avatar" :src="avatar" :size="30"></el-avatar>
                     </el-menu-item>
                     <el-submenu index="2">
-                        <template slot="title">昵称</template>
+                        <template slot="title">{{ name }}</template>
                         <el-menu-item index="2-1">
                             <i class="saintic-icon saintic-icon-user"></i> 个人资料
                         </el-menu-item>
@@ -25,17 +25,17 @@
                         <el-menu-item index="2-4">
                             <i class="saintic-icon saintic-icon-rss"></i> 我的RSS
                         </el-menu-item>
-                        <el-menu-item index="2-5" v-show="isAdmin">
+                        <el-menu-item index="2-5" v-if="isAdmin">
                             <i class="saintic-icon saintic-icon-site-manager"></i> 站点管理
                         </el-menu-item>
-                        <el-menu-item index="2-6">
+                        <el-menu-item index="/logout">
                             <i class="saintic-icon saintic-icon-logoff"></i> 登出
                         </el-menu-item>
                     </el-submenu>
                 </el-menu>
             </div>
             <div v-else>
-                <el-menu mode="horizontal" router>
+                <el-menu mode="horizontal" router :default-active="this.$route.path">
                     <el-menu-item index="/login">
                         <i class="saintic-icon saintic-icon-login"></i> 登录
                     </el-menu-item>
@@ -49,22 +49,23 @@
 </template>
 
 <script>
+import { mapState } from '@/libs/store.js'
 export default {
     name: 'Navbar',
-    props: {
-        logo: {
-            type: String,
-            default: require('../assets/img/logo.png')
+    computed: {
+        name() {
+            return this.nickname || this.username
         },
-        avatar: {
-            type: String,
-            default: require('../assets/img/defaultAvatar.png')
+        logo() {
+            return this.$store.state.logo || require('../assets/img/logo.png')
         },
-        isLogin: {
-            type: Boolean,
-            required: true
+        avatar() {
+            return (
+                this.$store.state.avatar ||
+                require('../assets/img/defaultAvatar.png')
+            )
         },
-        isAdmin: Boolean
+        ...mapState(['isLogin', 'isAdmin', 'nickname', 'username'])
     }
 }
 </script>
