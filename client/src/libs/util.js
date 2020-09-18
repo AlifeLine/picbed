@@ -1,20 +1,21 @@
 import axios from 'axios'
+import { STORAGE_KEY, API_BASEURL } from './vars.js'
 
 export const http = axios.create({
-    baseURL: '/api',
+    baseURL: API_BASEURL,
     timeout: 5000,
     withCredentials: false
 })
 
 // 添加请求拦截器
 http.interceptors.request.use(
-    function(request) {
+    function(config) {
         // 在发送请求之前做些什么
         let token = getStorage('sid')
         if (token) {
-            request.headers.Authorization = `Cookie ${token}`
+            config.headers.Authorization = `Cookie ${token}`
         }
-        return request
+        return config
     },
     function(error) {
         // 对请求错误做些什么
@@ -56,7 +57,7 @@ export function setStorage(key, data, expire = 0) {
     }
 }
 
-export function getStorage(key = 'global-picbed-state') {
+export function getStorage(key = STORAGE_KEY) {
     try {
         let obj = JSON.parse(localStorage.getItem(key))
         if (obj && isObject(obj)) {

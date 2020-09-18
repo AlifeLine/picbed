@@ -32,40 +32,10 @@ from .tool import logger, get_current_timestamp, rsp, sha256, username_pat, \
     parse_valid_comma, parse_data_uri, format_apires, url_pat, ALLOWED_EXTS, \
     parse_valid_verticaline, parse_valid_colon, is_true, is_venv, gen_ua, \
     check_to_addr, is_all_fail, bleach_html, try_request, comma_pat, \
-    create_redis_engine, allowed_file
+    allowed_file, ParseTranslate
 from ._compat import PY2, text_type, urlsplit, parse_qs
-if not PY2:
-    from functools import reduce
+from functools import reduce
 
-rc = create_redis_engine()
-
-no_jump_ep = ("front.login", "front.logout", "front.register")
-
-
-def get_referrer_url():
-    """获取上一页地址"""
-    if request.method == "GET" and request.referrer and \
-            request.referrer.startswith(request.host_url) and \
-            request.endpoint and "api." not in request.endpoint and \
-            request.endpoint not in no_jump_ep:
-        url = request.referrer
-    else:
-        url = None
-    return url
-
-
-def get_redirect_url(endpoint="front.index"):
-    """获取重定向地址"""
-    url = request.args.get('next')
-    if not url:
-        if endpoint != "front.index":
-            url = url_for(endpoint)
-        else:
-            url = get_referrer_url() or (
-                request.full_path if request.endpoint not in no_jump_ep
-                else None
-            ) or url_for(endpoint)
-    return url
 
 
 def default_login_auth(dSid=None):
@@ -126,16 +96,6 @@ def login_required(f):
                 return redirect(url_for('front.login', next=nu))
             else:
                 return redirect(url_for('front.login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-def anonymous_required(f):
-    """页面要求匿名装饰器"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if g.signin:
-            return redirect(url_for('front.index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -208,69 +168,13 @@ def dfr(res, default='en-US'):
     except (ValueError, TypeError, KeyError, Exception):
         language = default
     # 翻译转换字典库 TODO 翻译文本文件，按英文索引
-    trans = {
-        # 简体中文
-        "zh-CN": {
-            "Hello World": "你好，世界",
-            "Parameter error": "参数错误",
-            "The upload_path type error": "upload_path类型错误",
-            "The upyun parameter error": "又拍云相关参数错误",
-            "Please install upyun module": "请安装upyun模块",
-            "Please install qiniu module": "请安装qiniu模块",
-            "The qiniu parameter error": "七牛云相关参数错误",
-            "The aliyun parameter error": "阿里云oss相关参数错误",
-            "The tencent parameter error": "腾讯云cos相关参数错误",
-            "The sm.ms parameter error": "sm.ms相关参数错误",
-            "The github parameter error": "GitHub相关参数错误",
-            "The gitee parameter error": "Gitee相关参数错误",
-            "An unknown error occurred in the program": "程序发生未知错误",
-            "Program data storage service error": "程序数据存储服务异常",
-            "Anonymous user is not sign in": "匿名用户未登录",
-            "No valid username found": "未发现有效用户名",
-            "The username or password parameter error": "用户名或密码参数错误",
-            "No data": "没有数据",
-            "No file or image format error": "未获取到文件或不允许的图片格式",
-            "All backend storage services failed to save pictures": "后端存储服务图片保存全部失败",
-            "No valid backend storage service": "无有效后端存储服务",
-            "No valid backend hook": "无有效后端钩子",
-            "The third module not found": "第三方模块未发现",
-            "Password verification failed": "密码验证失败",
-            "Password must be at least 6 characters": "密码最少6位",
-            "Confirm passwords do not match": "确认密码不匹配",
-            "Existing token": "已有token",
-            "No token yet": "还未有token",
-            "The username is invalid or registration is not allowed": "用户名不合法或不允许注册",
-            "The username already exists": "用户名已存在",
-            "Normal user login has been disabled": "已禁止普通用户登录",
-            "Illegal users are not allowed to modify": "不合法的用户禁止修改",
-            "The user setting must start with `ucfg_`": "用户设置必须以`ucfg_`开头",
-            "Invalid IP address": "无效的IP地址",
-            "Invalid url address": "无效的url",
-            "Not found the LinkId": "没有此LinkId",
-            "Not found the endpoint": "无此endpoint路由端点",
-            "Invalid HTTP method": "无效http方法",
-            "Invalid exterior_relation": "无效的exterior_relation平行规则",
-            "Invalid interior_relation": "无效的interior_relation内联规则",
-            "Wrong query range parameter": "查询范围错误",
-            "accepted": "已接受",
-            "Pending review, cannot upload pictures": "审核中，不能上传图片",
-            "The user is disabled, no operation": "用户被禁用，无权操作",
-            "Email send failed": "邮件发送失败",
-            "expired token": "token过期",
-            "useless": "无用token",
-            "Current state prohibits use of this method": "当前状态禁止使用此方法",
-            "The user has no authenticated mailbox": "用户没有验证过的邮箱",
-            "Interceptor processing rejection, upload aborted": "拦截器处理拒绝，上传中止",
-            "Request fail": "请求失败",
-            "Invalid expire param": "无效的expire参数",
-            "Users also have pictures that cannot be deleted": "用户还有图片，不能删除",
-        },
-    }
+    pt = ParseTranslate(pathjoin(current_app.root_path, "translations.ini"))
+    print(pt.data)
     if isinstance(res, dict) and "en" not in language:
         if res.get("msg"):
             msg = res["msg"]
             try:
-                new = trans[language][msg]
+                new = pt.data[language][msg]
             except KeyError:
                 logger.debug("Miss translation: %s" % msg)
             else:
@@ -290,7 +194,7 @@ def change_res_format(res):
 
 
 def change_userinfo(userinfo):
-    """解析用户信息userinfo部分字段数据"""
+    """Parsing user information userinfo partial field data"""
     if userinfo and isinstance(userinfo, dict):
         userinfo.update(
             parsed_ucfg_url_rule=parse_valid_colon(
@@ -303,8 +207,6 @@ def change_userinfo(userinfo):
                 rst=is_true(g.userinfo.get("ucfg_urlrule_incopyrst")),
                 markdown=is_true(g.userinfo.get("ucfg_urlrule_incopymd")),
             ),
-            #: ..versionadded:: 1.7.0
-            #: 用户状态默认是1启用，-2、-1待审核仅无法上传，0禁用无任何权限
             status=int(userinfo.get("status", 1)),
         )
     return userinfo

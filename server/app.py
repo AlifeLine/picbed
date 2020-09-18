@@ -12,11 +12,10 @@
 from flask import Flask, g, request, render_template, jsonify
 from views import front_bp, api_bp
 from utils.tool import Attribute, is_true, parse_valid_comma, err_logger, \
-    timestamp_to_timestring
+    timestamp_to_timestring, raise_if_less_version
 from utils.web import get_site_config, JsonResponse, default_login_auth, \
     get_redirect_url, change_userinfo, rc, get_page_msg, get_push_msg, dfr
 from utils.exceptions import ApiError, PageError
-from utils.cli import sa_cli
 from libs.hook import HookManager
 from config import GLOBAL
 from version import __version__
@@ -26,6 +25,7 @@ __email__ = 'staugur@saintic.com'
 __date__ = '2019-12-20'
 __doc__ = 'Flask-based web self-built pictures bed'
 
+raise_if_less_version()
 app = Flask(__name__)
 app.response_class = JsonResponse
 app.config.update(
@@ -37,9 +37,8 @@ app.config.update(
 )
 
 hm = HookManager(app)
-app.register_blueprint(front_bp, url_prefix="/v1")
+app.register_blueprint(front_bp)
 app.register_blueprint(api_bp, url_prefix="/api")
-app.cli.add_command(sa_cli)
 
 
 @app.context_processor

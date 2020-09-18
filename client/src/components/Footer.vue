@@ -38,6 +38,9 @@ export default {
 </script>
 
 <style>
+.footer {
+    text-align: center;
+}
 .footer a {
     color: #666;
     text-decoration: none;

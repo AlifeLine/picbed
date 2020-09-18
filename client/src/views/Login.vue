@@ -24,6 +24,7 @@
                     v-model="loginForm.password"
                     autocomplete="off"
                     placeholder="密码"
+                    @keyup.enter.native="handleSubmit"
                 ></el-input>
             </el-form-item>
             <el-form-item>
@@ -73,7 +74,7 @@ export default {
     },
     methods: {
         handleSubmit(event) {
-            this.$refs.loginForm.validate(valid => {
+            this.$refs.loginForm.validate((valid) => {
                 if (valid) {
                     this.logining = true
                     this.$http
@@ -82,7 +83,7 @@ export default {
                             password: this.loginForm.password,
                             remember: this.checked
                         })
-                        .then(res => {
+                        .then((res) => {
                             this.logining = false
                             if (res.data.code === 0) {
                                 this.$message.success('登录成功')
@@ -96,7 +97,7 @@ export default {
                                 this.$message.info(res.data.msg)
                             }
                         })
-                        .catch(e => {
+                        .catch((e) => {
                             this.logining = false
                             this.$message.error(e)
                         })

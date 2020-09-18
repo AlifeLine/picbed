@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import { Message } from 'element-ui'
+import { STORAGE_KEY } from './vars.js'
 import {
     http,
     getStorage,
@@ -9,6 +10,7 @@ import {
     isObject
 } from './util.js'
 
+console.log('init state')
 export const state = Vue.observable(
     Object.assign(
         {
@@ -28,11 +30,13 @@ export const state = Vue.observable(
             avatar: '',
             email: '',
             nickname: '',
-            username: ''
+            username: '',
+            token: ''
         },
         getStorage()
     )
 )
+console.log({ ...state })
 
 export const mutations = {
     setLogin(sessionId, expire) {
@@ -44,7 +48,10 @@ export const mutations = {
         clearStorage('sid')
     },
     updateLogin: v => (state.isLogin = Boolean(v)),
-    changeLogin: () => (state.isLogin = !state.isLogin)
+    changeLogin: () => (state.isLogin = !state.isLogin),
+    commit(key, value) {
+        state[key] = value
+    }
 }
 
 export const actions = {
@@ -54,9 +61,9 @@ export const actions = {
             .then(function(res) {
                 console.log(res.data)
                 Object.keys(res.data).forEach(key => {
-                    state[key] = res.data[key]
+                    mutations.commit(key, res.data[key])
                 })
-                setStorage('picbed-global-state', { ...state })
+                setStorage(STORAGE_KEY, { ...state })
             })
             .catch(function(e) {
                 console.error(e)

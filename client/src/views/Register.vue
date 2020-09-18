@@ -3,7 +3,6 @@
         <el-form
             :model="registerForm"
             :rules="registerRule"
-            status-icon
             ref="registerForm"
             label-position="left"
             label-width="0px"
@@ -85,12 +84,28 @@ export default {
                         required: true,
                         message: '请输入用户名',
                         trigger: 'blur'
+                    },
+                    {
+                        min: 4,
+                        max: 32,
+                        message: '用户名要求4-32位字符',
+                        trigger: 'blur'
+                    },
+                    {
+                        pattern: /^[a-zA-Z][0-9a-zA-Z\_]{3,31}$/,
+                        message: '用户名要求以字母开头加字母、数字或下划线',
+                        trigger: 'blur'
                     }
                 ],
                 password: [
                     {
                         required: true,
                         message: '请输入密码',
+                        trigger: 'blur'
+                    },
+                    {
+                        pattern: /^[\S]{6,32}$/,
+                        message: '密码要求6到32位且无空格',
                         trigger: 'blur'
                     }
                 ]

@@ -16,11 +16,13 @@ import hashlib
 import requests
 import smtplib
 import semver
+from os.path import isfile
+from configparser import ConfigParser
+from string import ascii_letters, digits
 from uuid import uuid4
 from time import time, localtime, strftime
 from datetime import datetime
-from random import randrange, sample, randint, choice
-from redis import from_url
+from random import randrange, randint, choice, choices
 from email.header import Header
 from email.mime.text import MIMEText
 from email.utils import parseaddr, formataddr
@@ -29,9 +31,7 @@ from bleach import clean as bleach_clean
 from bleach.sanitizer import ALLOWED_TAGS, ALLOWED_ATTRIBUTES, ALLOWED_STYLES
 from version import __version__ as PICBED_VERSION
 from .log import Logger
-from ._compat import string_types, text_type, PY2, urlparse
-if PY2:
-    from socket import error as ConnectionRefusedError
+from ._compat import string_types, text_type, urlparse
 
 
 logger = Logger("sys").getLogger
@@ -70,18 +70,12 @@ ALLOWED_HTTP_METHOD = ("GET", "POST", "PUT", "DELETE", "HEAD")
 
 
 def rsp(*args):
-    """使用 `picbed:` 前缀生成redis key"""
+    '''Use the prefix 'picbed:' to generate redis key'''
     return "picbed:" + ":".join(map(str, args))
 
 
-def md5(text):
-    if not PY2 and isinstance(text, text_type):
-        text = text.encode("utf-8")
-    return hashlib.md5(text).hexdigest()
-
-
 def sha1(text):
-    if not PY2 and isinstance(text, text_type):
+    if isinstance(text, text_type):
         text = text.encode("utf-8")
     return hashlib.sha1(text).hexdigest()
 
@@ -93,69 +87,31 @@ def sha256(text):
 
 
 def hmac_sha256(key, text):
-    if PY2 and isinstance(key, text_type):
+    if isinstance(key, text_type):
         key = key.encode("utf-8")
-    if not PY2 and isinstance(key, text_type):
-        key = key.encode("utf-8")
-    if not PY2 and isinstance(text, text_type):
+    if isinstance(text, text_type):
         text = text.encode("utf-8")
     return hmac.new(key=key, msg=text, digestmod=hashlib.sha256).hexdigest()
 
 
 def get_current_timestamp(is_float=False):
-    """获取当前时间戳
+    """Get timestamp for now
 
-    :param bool is_float: True则获取10位秒级时间戳，否则原样返回
+    :param bool is_float: If it is True, get a 10-digit second-level timestamp,
+                          otherwise return as it is
     """
     return time() if is_float else int(time())
 
 
 def timestamp_to_timestring(timestamp, fmt='%Y-%m-%d %H:%M:%S'):
-    """ 将时间戳(10位)转换为可读性的时间 """
+    """Converts the timestamp (10 bits) to readable time"""
     if not isinstance(timestamp, (int, float)):
         try:
             timestamp = int(timestamp)
-        except:
-            raise
-    # timestamp为传入的值为时间戳(10位整数)，如：1332888820
+        except (ValueError, TypeError):
+            raise TypeError("The timestamp requires number")
     timestamp = localtime(timestamp)
-    # 经过localtime转换后变成
-    ## time.struct_time(tm_year=2012, tm_mon=3, tm_mday=28, tm_hour=6, tm_min=53, tm_sec=40, tm_wday=2, tm_yday=88, tm_isdst=0)
-    # 最后再经过strftime函数转换为正常日期格式。
     return strftime(fmt, timestamp)
-
-
-def create_redis_engine(redis_url=None):
-    """创建redis连接的入口
-
-    .. versionchanged:: 1.6.0
-        支持rediscluster
-    """
-    from config import REDIS
-    url = redis_url or REDIS
-    if not url:
-        return
-    if url.startswith("rediscluster://"):
-        try:
-            from rediscluster import RedisCluster
-        except ImportError:
-            raise ImportError(
-                "Please install module with `pip install redis-py-cluster`"
-            )
-        else:
-            startup_nodes = [
-                dict(host=hp.split(":")[0], port=hp.split(":")[1])
-                for hp in comma_pat.split(url.split("://")[-1])
-                if hp and len(hp.split(":")) == 2
-            ]
-            if startup_nodes:
-                return RedisCluster(
-                    startup_nodes=startup_nodes,
-                    decode_responses=True
-                )
-            else:
-                raise ValueError("Invalid redis url")
-    return from_url(url, decode_responses=True)
 
 
 def gen_rnd_filename(fmt):
@@ -213,19 +169,13 @@ def list_equal_split(l, n=5):
 
 
 def generate_random(length=6):
-    code_list = []
-    for i in range(10):  # 0-9数字
-        code_list.append(str(i))
-    for i in range(65, 91):  # A-Z
-        code_list.append(chr(i))
-    for i in range(97, 123):  # a-z
-        code_list.append(chr(i))
-    myslice = sample(code_list, length)
-    return ''.join(myslice)
+    return ''.join(
+        choices(ascii_letters + digits, k=length)
+    )
 
 
 def format_upload_src(fmt, value):
-    """转换upload路由中返回的src格式"""
+    """Convert src format returned in upload route"""
     if fmt and isinstance(fmt, string_types):
         if point_pat.match(fmt):
             if "." in fmt:
@@ -237,13 +187,17 @@ def format_upload_src(fmt, value):
 
 
 def format_apires(res, sn="code", oc=None, mn=None):
-    """转换API响应JSON的格式
+    """Convert the format of the API response JSON
 
-    可以用下面三个参数修改返回的res基本格式：
+    You can modify the basic format of the returned response with the following
+    three parameters:
 
-    - sn: status_name规定数据状态的字段名称，默认code
-    - oc: ok_code规定成功的状态码，默认0，用字符串bool则会返回布尔类型
-    - mn: msg_name规定状态信息的字段名称，默认msg
+    - sn: status_name, specifies the field name of the data status,
+      the default code
+    - oc: ok_code, specifies the successful status code. The default value
+      is 0. If the string bool is used, the boolean type will be returned.
+    - mn: msg_name, specifies the field name of the status information,
+      which is MSG by default
     """
     if isinstance(res, dict) and "code" in res:
         if not sn:
@@ -251,10 +205,12 @@ def format_apires(res, sn="code", oc=None, mn=None):
         code = res.pop("code")
         if oc:
             if oc == "bool":
-                #: ok_code要求bool时，成功返回True，否则False
+                #: Ok_ If code requires bool, it returns true successfully,
+                #: otherwise false
                 code = True if code == 0 else False
             else:
-                #: 不是bool就是int，成功返回oc，否则是code本身
+                #: If it is not bool or int, OC is returned successfully,
+                #: otherwise it is code itself
                 try:
                     code = int(oc) if code == 0 else code
                 except (ValueError, TypeError):
@@ -285,7 +241,7 @@ class Attribute(dict):
 
 
 def get_origin(url):
-    """从url提取出符合CORS格式的origin地址"""
+    '''The CORS format origin address extracted from the URL'''
     parsed_uri = urlparse(url)
     return '{uri.scheme}://{uri.netloc}'.format(uri=parsed_uri)
 
@@ -316,26 +272,12 @@ def check_url(addr):
     return False
 
 
-def check_ip(ip_str):
-    sep = ip_str.split('.')
-    if len(sep) != 4:
-        return False
-    for x in sep:
-        try:
-            int_x = int(x)
-            if int_x < 0 or int_x > 255:
-                return False
-        except ValueError:
-            return False
-    return True
-
-
 def gen_uuid():
     return uuid4().hex
 
 
 def check_ir(ir):
-    """解析ir规则，其格式是: in:opt1, not in:opt2"""
+    """parse `ir` rule with format: in:opt1, not in:opt2"""
     if ir:
         for i in parse_valid_comma(ir):
             opr, opt = i.split(":")
@@ -345,7 +287,7 @@ def check_ir(ir):
 
 def parse_data_uri(datauri):
     """Parse Data URLs: data:[<media type>][;base64],<data>"""
-    if not PY2 and not isinstance(datauri, text_type):
+    if not isinstance(datauri, text_type):
         datauri = datauri.decode("utf-8")
     match = data_uri_pat.match(datauri)
     if match:
@@ -366,7 +308,6 @@ def parse_data_uri(datauri):
 
 
 def gen_ua():
-    """随机生成用户代理"""
     first_num = randint(55, 62)
     third_num = randint(0, 3200)
     fourth_num = randint(0, 140)
@@ -379,7 +320,7 @@ def gen_ua():
     chrome_version = 'Chrome/{}.0.{}.{}'.format(
         first_num, third_num, fourth_num
     )
-    ua = ' '.join(
+    return ' '.join(
         [
             'Mozilla/5.0',
             choice(os_type),
@@ -389,11 +330,11 @@ def gen_ua():
             'Safari/537.36'
         ]
     )
-    return ua
 
 
 def parse_ua(user_agent):
-    """解析用户代理，获取其操作系统、设备、版本"""
+    """Analyze the user agent to obtain its operating system,
+    device and version"""
     uap = user_agents_parse(user_agent)
     device, ua_os, family = str(uap).split(' / ')
     if uap.is_mobile:
@@ -410,7 +351,6 @@ def parse_ua(user_agent):
 
 
 def slash_join(*args):
-    """用 / 连接参数"""
     stripped_strings = []
     for a in args:
         if a[0] == '/':
@@ -485,7 +425,7 @@ def try_request(
 
 
 def is_venv():
-    """判断当前环境是否在virtualenv、venv下"""
+    """Judge whether the current environment is under virtualenv and venv"""
     return (hasattr(sys, 'real_prefix') or
             (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix))
 
@@ -496,7 +436,7 @@ def is_all_fail(l):
 
 
 def check_to_addr(to):
-    """检测收件人格式"""
+    """Detect recipient format"""
     to_addrs = parse_valid_comma(to)
     if to_addrs:
         for to in to_addrs:
@@ -600,12 +540,10 @@ def bleach_html(
 def is_valid_verion(version):
     """Semantic version number - determines whether the version is qualified.
     The format is MAJOR.Minor.PATCH, more with https://semver.org
-
-    :param str version: 版本号
     """
     if not version:
         return False
-    if not PY2 and not isinstance(version, string_types):
+    if not isinstance(version, string_types):
         version = version.decode("utf-8")
 
     if hasattr(semver.VersionInfo, "isvalid"):
@@ -627,7 +565,7 @@ def is_match_appversion(appversion=None):
     #: 没有要求appversion则默认认为兼容所有版本
     if not appversion:
         return True
-    if not PY2 and not isinstance(appversion, string_types):
+    if not isinstance(appversion, string_types):
         appversion = appversion.decode("utf-8")
 
     sysver = semver.VersionInfo.parse(PICBED_VERSION)
@@ -652,7 +590,33 @@ def less_latest_tag(latest_tag):
         return semver.compare(latest_tag, PICBED_VERSION) == 1
 
 
+def raise_if_less_version():
+    vs = sys.version_info
+    if not (vs[0], vs[1]) >= (3, 6):
+        raise SystemError("The system requires a minimum version of 3.6")
+
+
 def parse_author_mail(author):
     """从形如 ``author <author-mail>`` 中分离author与mail"""
     pat = author_mail_re.search(author)
     return (pat.group(1), pat.group(2)) if pat else (author, None)
+
+
+class ParseTranslate(object):
+
+    def __init__(self, filename, from_env=False):
+        self._filename = filename
+        self._properties = {}
+        self._get_properties()
+
+    def _get_properties(self):
+        if not isfile(self._filename):
+            return
+        config = ConfigParser()
+        config.read(self._filename, encoding="utf-8")
+        for sct in config.sections():
+            self._properties[sct] = dict(config.items(sct))
+
+    @property
+    def data(self):
+        return self._properties

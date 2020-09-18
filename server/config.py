@@ -10,8 +10,54 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
-from os.path import dirname, join
-from utils._compat import Properties
+from os import getenv
+from os.path import dirname, join, isfile
+
+
+class Properties(object):
+    '''read config from an ini file or environment'''
+
+    def __init__(self, filename, from_env=False):
+        self.filename = filename
+        self.from_env = from_env
+        self.properties = {}
+        self._get_properties()
+
+    def __get_dict(self, str_name, dict_name, value):
+        if(str_name.find('.') > 0):
+            k = str_name.split('.')[0]
+            dict_name.setdefault(k, {})
+            return self.__get_dict(str_name[len(k)+1:], dict_name[k], value)
+        else:
+            dict_name[str_name] = value
+            return
+
+    def _get_properties(self):
+        if not isfile(self.filename):
+            return
+        with open(self.filename, 'Ur') as pro_file:
+            for line in pro_file.readlines():
+                line = line.strip().replace('\n', '')
+                if line.find("#") != -1:
+                    line = line[0:line.find('#')]
+                if line.find('=') > 0:
+                    strs = line.split('=')
+                    strs[1] = line[len(strs[0])+1:]
+                    self.__get_dict(
+                        strs[0].strip(),
+                        self.properties, strs[1].strip()
+                    )
+        return self.properties
+
+    def get(self, k, default_value=None):
+        if not self.properties:
+            self._get_properties()
+        v = self.properties.get(k)
+        if self.from_env is True:
+            if not v:
+                v = getenv(k)
+        return v or default_value
+
 
 envs = Properties(join(dirname(__file__), ".cfg"), from_env=True)
 

@@ -68,7 +68,7 @@ def spa():
         "bulletin": "bulletin"
     }
     userfiled = (
-        "avatar", "email", "nickname", "username"
+        "avatar", "email", "nickname", "username", "token"
     )
     info = dict(
         isLogin=g.signin,
@@ -98,14 +98,14 @@ def spa():
 @bp.route("/login", methods=["POST"])
 def login():
     res = dict(code=1, msg=None)
-    data = request.json or request.form
-    usr = data.get("username")
-    pwd = data.get("password")
+    post = request.json or request.form
+    usr = post.get("username")
+    pwd = post.get("password")
     #: 定义是否设置cookie状态
-    set_state = is_true(data.get("set_state"))
+    set_state = is_true(post.get("set_state"))
     is_secure = False if request.url_root.split("://")[0] == "http" else True
     max_age = 7200
-    if is_true(data.get("remember")):
+    if is_true(post.get("remember")):
         #: Remember me 7d
         max_age = 604800
     #: 登录接口钩子
@@ -184,9 +184,9 @@ def register():
         return abort(404)
     res = dict(code=1, msg=None)
     #: Required fields
-    data = request.json or request.form
-    username = data.get("username")
-    password = data.get("password")
+    post = request.json or request.form
+    username = post.get("username")
+    password = post.get("password")
     if username and password:
         username = username.lower()
         if check_username(username):
@@ -896,6 +896,7 @@ def my():
 @apilogin_required
 def waterfall():
     res = dict(code=1, msg=None)
+    post = request.json or request.form
     #: 依次根据ctime、filename排序
     sort = request.args.get("sort") or "desc"
     #: 符合人类习惯的page，第一页是1（程序计算需要减1）
@@ -905,7 +906,7 @@ def waterfall():
     #: 管理员账号读取所有图片数据
     is_mgr = is_true(request.args.get("is_mgr"))
     #: 相册，当album不为空时，近返回此相册数据，允许逗号分隔多个
-    album = request.args.get("album", request.form.get("album"))
+    album = request.args.get("album", post.get("album"))
     try:
         page = int(page) - 1
         limit = int(limit)

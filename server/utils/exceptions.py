@@ -11,7 +11,6 @@
 
 
 class PicbedError(Exception):
-    """异常基类"""
     pass
 
 
