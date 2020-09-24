@@ -69,24 +69,24 @@ ALLOWED_EXTS = ("png", "jpg", "jpeg", "gif", "bmp", "webp")
 ALLOWED_HTTP_METHOD = ("GET", "POST", "PUT", "DELETE", "HEAD")
 
 
-def rsp(*args):
+def rsp(*args: list) -> str:
     '''Use the prefix 'picbed:' to generate redis key'''
     return "picbed:" + ":".join(map(str, args))
 
 
-def sha1(text):
+def sha1(text: str) -> str:
     if isinstance(text, text_type):
         text = text.encode("utf-8")
     return hashlib.sha1(text).hexdigest()
 
 
-def sha256(text):
+def sha256(text: str) -> str:
     if isinstance(text, text_type):
         text = text.encode("utf-8")
     return hashlib.sha256(text).hexdigest()
 
 
-def hmac_sha256(key, text):
+def hmac_sha256(key: str, text: str) -> str:
     if isinstance(key, text_type):
         key = key.encode("utf-8")
     if isinstance(text, text_type):
@@ -94,7 +94,7 @@ def hmac_sha256(key, text):
     return hmac.new(key=key, msg=text, digestmod=hashlib.sha256).hexdigest()
 
 
-def get_current_timestamp(is_float=False):
+def get_now(is_float: bool = False) -> int:
     """Get timestamp for now
 
     :param bool is_float: If it is True, get a 10-digit second-level timestamp,
@@ -103,7 +103,7 @@ def get_current_timestamp(is_float=False):
     return time() if is_float else int(time())
 
 
-def timestamp_to_timestring(timestamp, fmt='%Y-%m-%d %H:%M:%S'):
+def timestamp_to_timestring(timestamp: int, fmt='%Y-%m-%d %H:%M:%S') -> str:
     """Converts the timestamp (10 bits) to readable time"""
     if not isinstance(timestamp, (int, float)):
         try:
@@ -114,7 +114,7 @@ def timestamp_to_timestring(timestamp, fmt='%Y-%m-%d %H:%M:%S'):
     return strftime(fmt, timestamp)
 
 
-def gen_rnd_filename(fmt):
+def gen_rnd_filename(fmt: str) -> str:
     if fmt == "time1":
         return int(round(time() * 1000))
     elif fmt == "time2":
@@ -128,11 +128,11 @@ def gen_rnd_filename(fmt):
         )
 
 
-def get_today(fmt="%Y/%m/%d"):
+def get_today(fmt: str = "%Y/%m/%d") -> str:
     return datetime.now().strftime(fmt)
 
 
-def allowed_file(filename, suffix=None):
+def allowed_file(filename: str, suffix=None) -> bool:
     suffix = set(suffix or ALLOWED_EXTS)
     return '.' in filename and \
         filename.rsplit('.', 1)[1].lower() in suffix
@@ -158,23 +158,21 @@ def parse_valid_colon(s):
         ])
 
 
-def is_true(value):
+def is_true(value: str) -> bool:
     if value and value in (True, "True", "true", "on", 1, "1", "yes"):
         return True
     return False
 
 
-def list_equal_split(l, n=5):
-    return [l[i:i+n] for i in range(0, len(l), n)]
+def list_equal_split(l: list, n: int = 5) -> list:
+    return [l[i:i + n] for i in range(0, len(l), n)]
 
 
-def generate_random(length=6):
-    return ''.join(
-        choices(ascii_letters + digits, k=length)
-    )
+def generate_random(length: int = 6) -> str:
+    return ''.join(choices(ascii_letters + digits, k=length))
 
 
-def format_upload_src(fmt, value):
+def format_upload_src(fmt: str, value: str) -> dict:
     """Convert src format returned in upload route"""
     if fmt and isinstance(fmt, string_types):
         if point_pat.match(fmt):
@@ -413,7 +411,7 @@ def try_request(
                 timeout=timeout,
                 method=method,
                 proxy=proxy,
-                num_retries=num_retries-1,
+                num_retries=num_retries - 1,
                 _is_retry=True,
             )
         else:

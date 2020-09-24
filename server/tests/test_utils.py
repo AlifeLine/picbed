@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from utils.tool import Attribution, md5, sha1, rsp, get_current_timestamp, \
+from utils.tool import Attribution, md5, sha1, rsp, get_now, \
     allowed_file, parse_valid_comma, parse_valid_verticaline, is_true, \
     hmac_sha256, sha256, check_origin, get_origin, parse_data_uri, \
     format_upload_src, format_apires, generate_random, check_ip, gen_ua, \
@@ -44,7 +44,7 @@ class UtilsTest(unittest.TestCase):
         self.assertTrue(is_true("on"))
         self.assertTrue(is_true("true"))
         self.assertFalse(is_true(0))
-        self.assertIsInstance(get_current_timestamp(), int)
+        self.assertIsInstance(get_now(), int)
         self.assertTrue(allowed_file("test.PNG"))
         self.assertTrue(allowed_file(".jpeg"))
         self.assertFalse(allowed_file("my.psd"))

@@ -22,7 +22,7 @@ from redis.exceptions import RedisError
 from collections import Counter
 from utils.tool import allowed_file, parse_valid_comma, is_true, logger, sha1,\
     parse_valid_verticaline, get_today, gen_rnd_filename, hmac_sha256, rsp, \
-    sha256, get_current_timestamp, list_equal_split, generate_random, er_pat, \
+    sha256, get_now, list_equal_split, generate_random, er_pat, \
     format_upload_src, check_origin, get_origin, check_ip, gen_uuid, ir_pat, \
     username_pat, ALLOWED_HTTP_METHOD, is_all_fail, parse_valid_colon, \
     check_ir, less_latest_tag, check_url
@@ -141,10 +141,10 @@ def login():
             if password and check_password_hash(password, pwd):
                 #: 登录成功
                 g.rc.hmset(rsp("account", usr), dict(
-                    login_at=get_current_timestamp(),
+                    login_at=get_now(),
                     login_ip=get_user_ip(),
                 ))
-                expire = get_current_timestamp() + max_age
+                expire = get_now() + max_age
                 sid = "%s.%s.%s" % (
                     usr,
                     expire,
@@ -209,7 +209,7 @@ def register():
                         is_admin=0,
                         avatar=request.form.get("avatar") or "",
                         nickname=request.form.get("nickname") or "",
-                        ctime=get_current_timestamp(),
+                        ctime=get_now(),
                         status=status,
                         label=g.cfg.default_userlabel,
                     )
@@ -717,7 +717,7 @@ def token():
             ("%s.%s.%s.%s" % (
                 generate_random(),
                 usr,
-                get_current_timestamp(),
+                get_now(),
                 hmac_sha256(key, usr)
             )).encode("utf-8")
         ).decode("utf-8")
@@ -784,7 +784,7 @@ def my():
             for k, v in iteritems(request.form.to_dict())
             if k in allowed_fields
         }
-        data.update(mtime=get_current_timestamp())
+        data.update(mtime=get_now())
         if is_true(g.userinfo.email_verified) and \
                 data.get("email") != g.userinfo.email:
             data["email_verified"] = 0
@@ -1185,7 +1185,7 @@ def upload():
             upload_path = ''
         upload_path = join(g.userinfo.username or 'anonymous', upload_path)
         #: 定义文件名唯一索引
-        sha = "sha1.%s.%s" % (get_current_timestamp(True), sha1(filename))
+        sha = "sha1.%s.%s" % (get_now(True), sha1(filename))
         #: 定义保存图片时仅使用某些钩子，如: up2local
         #: TODO 目前版本仅允许设置了一个，后续聚合
         includes = parse_valid_comma(g.cfg.upload_includes or 'up2local')
@@ -1236,7 +1236,7 @@ def upload():
             filename=filename,
             upload_path=upload_path,
             user=g.userinfo.username if g.signin else 'anonymous',
-            ctime=get_current_timestamp(),
+            ctime=get_now(),
             status='enabled',  # deleted
             src=defaultSrc,
             sender=data[0]["sender"],
@@ -1420,7 +1420,7 @@ def link():
         LinkId = gen_uuid()
         LinkSecret = generate_password_hash(LinkId)
         lid = "%s:%s:%s" % (
-            get_current_timestamp(),
+            get_now(),
             LinkId,
             hmac_sha256(LinkId, LinkSecret)
         )
@@ -1431,7 +1431,7 @@ def link():
             LinkId=LinkId,
             LinkSecret=LinkSecret,
             LinkToken=LinkToken,
-            ctime=get_current_timestamp(),
+            ctime=get_now(),
             user=username,
             comment=comment,
             album=album.strip(),
@@ -1494,7 +1494,7 @@ def link():
             pipe = g.rc.pipeline()
             pipe.hset(ltk, LinkId, username)
             pipe.hmset(key, dict(
-                mtime=get_current_timestamp(),
+                mtime=get_now(),
                 comment=comment,
                 album=album,
                 allow_origin=allow_origin,
@@ -1612,7 +1612,7 @@ def load():
         for img in todo:
             filename = img["filename"]
             #: 定义文件名唯一索引
-            sha = "sha1.%s.%s" % (get_current_timestamp(True), sha1(filename))
+            sha = "sha1.%s.%s" % (get_now(True), sha1(filename))
             #: 入库
             pipe.sadd(rsp("index", "global"), sha)
             pipe.sadd(rsp("index", "user", g.userinfo.username), sha)
@@ -1622,7 +1622,7 @@ def load():
                 filename=filename,
                 upload_path=g.userinfo.username + "/",
                 user=g.userinfo.username,
-                ctime=get_current_timestamp(),
+                ctime=get_now(),
                 status='enabled',
                 src=img["url"],
                 sender="load",

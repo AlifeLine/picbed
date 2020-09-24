@@ -20,10 +20,10 @@ from flask import render_template, render_template_string, Markup, abort, \
     send_from_directory, url_for
 from utils.tool import Attribution, is_valid_verion, is_match_appversion, \
     logger, parse_author_mail
-from utils._compat import string_types, integer_types, iteritems, text_type, \
-    PY2
+from utils._compat import integer_types
+from utils.vars import HSK, HTK, HLTK
+from utils.storage import rc
 from config import GLOBAL
-from .storage import get_storage
 
 
 class HookManager(object):
@@ -31,14 +31,13 @@ class HookManager(object):
     def __init__(
         self,
         app=None,
-        hooks_dir="hooks",
-        reload_time=600,
-        third_hooks=None,
+        hooks_dir: str = "hooks",
+        reload_time: int = 600,
+        third_hooks: list = None,
     ):
         """Receive initialization parameters and
         pass options to :meth:`init_app` method.
         """
-        self.__storage = get_storage()
         self.__hf = hooks_dir
         self.__hook_dir = join(dirname(dirname(abspath(__file__))), self.__hf)
         self.__MAX_RELOAD_TIME = int(GLOBAL["HookReloadTime"] or reload_time)
@@ -83,62 +82,49 @@ class HookManager(object):
         return str(getpid())
 
     @property
+    def _get_load_time(self):
+        return rc.get(HLTK) or {}
+
+    @property
     def __last_load_time(self):
-        hlt = self.__storage.get("hookloadtime") or {}
-        return hlt.get(self._pid)
+        return self._get_load_time.get(self._pid)
 
     @__last_load_time.setter
     def __last_load_time(self, timestamp):
         if not isinstance(timestamp, (integer_types, float)):
             raise TypeError("The value of last_load_time type error")
-        hlt = self.__storage.get("hookloadtime") or {}
+        hlt = self._get_load_time
         if timestamp == 0:
-            hlt = {k: 0 for k, v in iteritems(hlt)}
+            hlt = {k: 0 for k, v in hlt.items()}
         else:
             hlt[self._pid] = timestamp
-        self.__storage.set("hookloadtime", hlt)
-
-    @__last_load_time.deleter
-    def __last_load_time(self):
-        if "hookloadtime" in self.__storage.list:
-            del self.__storage['hookloadtime']
+        rc.set(HLTK, hlt)
 
     def __del__(self):
-        del self.__last_load_time
+        rc.delete(HLTK)
 
     def __ensure_reloaded(self):
-        hlt = self.__storage.get("hookloadtime") or {}
-        myself = hlt.get(self._pid)
+        myself = self.__last_load_time
         if not myself or (time() - myself) > self.__MAX_RELOAD_TIME:
             self.__hooks = {}
             self.__last_load_time = time()
 
     @property
     def __third_hooks(self):
-        return self.__storage.get("hookthirds") or []
+        return rc.smembers(HTK)
 
     @__third_hooks.setter
-    def __third_hooks(self, third_hook_module_name):
+    def __third_hooks(self, *third_hook_module_name):
         """添加/删除第三方钩子
 
         :param str,list third_hook_module_name: 模块名
         """
         if not third_hook_module_name:
             return
-        hooks = set(self.__storage.get("hookthirds") or [])
-        if isinstance(third_hook_module_name, string_types):
-            if third_hook_module_name.endswith(":delete"):
-                delete_name = third_hook_module_name.split(":")[0]
-                if delete_name in hooks:
-                    hooks.remove(delete_name)
-            else:
-                hooks.add(third_hook_module_name)
-        elif isinstance(third_hook_module_name, (list, tuple)):
-            hooks.update(third_hook_module_name)
-        self.__storage.set("hookthirds", list(set(hooks)))
+        rc.sadd(HTK, *third_hook_module_name)
 
     def __get_state_storage(self, name):
-        s = set(self.__storage.get("hookstate") or [])
+        s = rc.smembers(HSK)
         d = "DISABLED.%s" % name
         e = "ENABLED.%s" % name
         if e in s:
@@ -155,18 +141,14 @@ class HookManager(object):
         return s
 
     def __set_state_storage(self, name, state):
-        s = set(self.__storage.get("hookstate") or [])
         d = "DISABLED.%s" % name
         e = "ENABLED.%s" % name
+        p = rc.pipeline()
         if state == "disabled":
-            if e in s:
-                s.remove(e)
-            s.add(d)
+            p.sadd(HSK, d).srem(HSK, e)
         elif state == "enabled":
-            if d in s:
-                s.remove(d)
-            s.add(e)
-        self.__storage.set("hookstate", list(s))
+            p.sadd(HSK, e).srem(HSK, d)
+        p.execute()
 
     def __get_fileorparent(self, obj, ask_dir=False):
         py = abspath(obj.__file__.replace(".pyc", ".py"))
@@ -320,7 +302,7 @@ class HookManager(object):
         """Get map enabled hooks, return dict"""
         return {
             name: h
-            for name, h in iteritems(self.get_map_hooks)
+            for name, h in self.get_map_hooks.items()
             if h.state == 'enabled'
         }
 
@@ -347,9 +329,10 @@ class HookManager(object):
         if third_hook_module_name:
             self.__third_hooks = third_hook_module_name
             if hasattr(self, 'app'):
-                self.app.jinja_loader.loaders.append(
-                    PackageLoader(third_hook_module_name)
-                )
+                pl = PackageLoader(third_hook_module_name)
+                pl.__origin__ = third_hook_module_name
+                pl.__proxy__ = pl
+                self.app.jinja_loader.loaders.append(pl)
             self.reload()
 
     def remove_third_hook(self, third_hook_name):
@@ -360,7 +343,14 @@ class HookManager(object):
         if third_hook_name:
             p = self.proxy(third_hook_name, is_enabled=False)
             if p and p.__family__ == "third" and hasattr(p, "__module_name__"):
-                self.__third_hooks = "%s:delete" % p.__module_name__
+                mn = p.__module_name__
+                rc.srem(HTK, mn)
+                if hasattr(self, 'app'):
+                    for loader in self.app.jinja_loader.loaders:
+                        if getattr(loader, "__origin__", None) == mn:
+                            self.app.jinja_loader.loaders.remove(
+                                getattr(loader, "__proxy__", None)
+                            )
                 self.reload()
 
     def proxy(self, name, is_enabled=True):
@@ -404,9 +394,6 @@ class HookManager(object):
                 if callable(cn) or tpl:
                     hin = True
             if hin:
-                if PY2 and h.description:
-                    if not isinstance(h.description, text_type):
-                        h["description"] = h.description.decode("utf-8")
                 hooks.append(dict(name=h.name, description=h.description))
         return hooks
 
@@ -511,8 +498,6 @@ class HookManager(object):
             if tpl.split(".")[-1] in ("html", "htm", "xhtml"):
                 content = render_template(tpl, **context)
             else:
-                if PY2 and not isinstance(tpl, text_type):
-                    tpl = tpl.decode("utf-8")
                 content = render_template_string(tpl, **context)
             if content:
                 result.append(content)

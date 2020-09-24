@@ -16,6 +16,7 @@ from utils.tool import Attribute, is_true, parse_valid_comma, err_logger, \
 from utils.web import get_site_config, JsonResponse, default_login_auth, \
     get_redirect_url, change_userinfo, rc, get_page_msg, get_push_msg, dfr
 from utils.exceptions import ApiError, PageError
+from redis.exceptions import RedisError
 from libs.hook import HookManager
 from config import GLOBAL
 from version import __version__
@@ -105,6 +106,13 @@ def handle_api_error(e):
     response = jsonify(dfr(e.to_dict()))
     response.status_code = e.status_code
     return response
+
+
+@app.errorhandler(RedisError)
+def handle_api_error(e):
+    return jsonify(dfr(
+        dict(code=2, msg="Program data storage service error")
+    ))
 
 
 @app.errorhandler(PageError)

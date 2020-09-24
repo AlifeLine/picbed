@@ -15,7 +15,7 @@ from posixpath import basename, splitext
 from os.path import join as pathjoin
 from io import BytesIO
 from functools import wraps
-from base64 import urlsafe_b64decode as b64decode, b64decode as pic64decode
+from base64 import b64decode as pic64decode
 from binascii import Error as BaseDecodeError
 from redis.exceptions import RedisError
 from requests.exceptions import RequestException
@@ -28,7 +28,7 @@ from subprocess import call, check_output
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, \
     SignatureExpired, BadSignature
 from libs.storage import get_storage
-from .tool import logger, get_current_timestamp, rsp, sha256, username_pat, \
+from .tool import logger, get_now, rsp, sha256, username_pat, \
     parse_valid_comma, parse_data_uri, format_apires, url_pat, ALLOWED_EXTS, \
     parse_valid_verticaline, parse_valid_colon, is_true, is_venv, gen_ua, \
     check_to_addr, is_all_fail, bleach_html, try_request, comma_pat, \
@@ -36,52 +36,6 @@ from .tool import logger, get_current_timestamp, rsp, sha256, username_pat, \
 from ._compat import PY2, text_type, urlsplit, parse_qs
 from functools import reduce
 
-
-
-def default_login_auth(dSid=None):
-    """默认登录解密
-
-    :returns: (signin:boolean, userinfo:dict)
-    """
-    sid = request.cookies.get(
-        "dSid", parse_authorization("Cookie")
-    ) or dSid or ""
-    signin = False
-    userinfo = {}
-    try:
-        if not sid:
-            raise ValueError
-        if PY2 and isinstance(sid, text_type):
-            sid = sid.encode("utf-8")
-        sid = b64decode(sid)
-        if not PY2 and not isinstance(sid, text_type):
-            sid = sid.decode("utf-8")
-        usr, expire, sha = sid.split(".")
-        expire = int(expire)
-    except (TypeError, ValueError, AttributeError, Exception):
-        pass
-    else:
-        if expire > get_current_timestamp():
-            ak = rsp("accounts")
-            pipe = g.rc.pipeline()
-            pipe.sismember(ak, usr)
-            pipe.hgetall(rsp("account", usr))
-            try:
-                result = pipe.execute()
-            except RedisError:
-                pass
-            else:
-                if isinstance(result, (tuple, list)) and len(result) == 2:
-                    has_usr, userinfo = result
-                    if has_usr and userinfo and isinstance(userinfo, dict):
-                        pwd = userinfo.pop("password", None)
-                        if sha256("%s:%s:%s:%s" % (
-                            usr, pwd, expire, current_app.config["SECRET_KEY"]
-                        )) == sha:
-                            signin = True
-    if not signin:
-        userinfo = {}
-    return (signin, userinfo)
 
 
 def login_required(f):
@@ -343,7 +297,7 @@ class Base64FileStorage(object):
                 mType, sType = self.mimetype.split("/")
                 if mType == "image":
                     ext = sType
-            self._filename = "{}.{}".format(get_current_timestamp(), ext)
+            self._filename = "{}.{}".format(get_now(), ext)
         return self._filename
 
     @property
@@ -411,7 +365,7 @@ class ImgUrlFileStorage(object):
                 mType, sType = self._imgobj.headers["Content-Type"].split("/")
                 if mType == "image":
                     ext = sType
-            self._filename = "{}.{}".format(get_current_timestamp(), ext)
+            self._filename = "{}.{}".format(get_now(), ext)
         return self._filename
 
     @property

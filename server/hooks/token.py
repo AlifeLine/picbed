@@ -17,7 +17,7 @@ __catalog__ = 'auth'
 import json
 from flask import request, g
 from base64 import urlsafe_b64decode as b64decode
-from utils.tool import rsp, hmac_sha256, logger, get_current_timestamp, \
+from utils.tool import rsp, hmac_sha256, logger, get_now, \
     parse_valid_comma, Attribution, ALLOWED_RULES, is_true, parse_ua
 from utils.web import parse_authorization
 from utils._compat import PY2, text_type
@@ -189,7 +189,7 @@ def before_request():
                         json.dumps(dict(
                             LinkId=LinkId,
                             user=usr,
-                            ctime=get_current_timestamp(),
+                            ctime=get_now(),
                             ip=get_ip(),
                             agent=get_ua(),
                             uap=parse_ua(get_ua()),
