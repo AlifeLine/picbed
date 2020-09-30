@@ -2,9 +2,11 @@
 
 The Flask-based web self-built image bed supports local storage, Upyun, Qiniu, Aliyun OSS, Tencent COS, GitHub, Gitee, etc.
 
-<div align="left">
-  <strong><a href="./README-cn.md">中文</a></strong> | <strong>English</strong>
-</div>
+> English | [中文](README-cn.md)
+
+[![Build Status](https://travis-ci.org/staugur/picbed.svg?branch=next)](https://travis-ci.org/staugur/picbed)
+[![codecov](https://codecov.io/gh/staugur/picbed/branch/next/graph/badge.svg)](https://codecov.io/gh/staugur/picbed)
+![Last Release](https://img.shields.io/github/release/staugur/picbed.svg?style=flat-square)
 
 ## About Next branch
 

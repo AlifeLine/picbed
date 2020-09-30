@@ -2,9 +2,11 @@
 
 基于Flask的Web自建图床，支持存储到本地、又拍云、七牛云、阿里云OSS、腾讯云COS、GitHub、Gitee(码云)等。
 
-<div align="left">
-  <strong>中文</strong> | <strong><a href="./README.md">English</a></strong>
-</div>
+> [English](README.md) | 中文
+
+[![Build Status](https://travis-ci.org/staugur/picbed.svg?branch=next)](https://travis-ci.org/staugur/picbed)
+[![codecov](https://codecov.io/gh/staugur/picbed/branch/next/graph/badge.svg)](https://codecov.io/gh/staugur/picbed)
+![Last Release](https://img.shields.io/github/release/staugur/picbed.svg?style=flat-square)
 
 ## 关于 Next 分支
 

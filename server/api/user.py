@@ -3,6 +3,8 @@
     api.user
     ~~~~~~~~
 
+    User Interface
+
     :copyright: (c) 2020 by staugur.
     :license: BSD 3-Clause, see LICENSE for more details.
 """
@@ -50,3 +52,4 @@ class User(UserMixin, EnDeMixin, ConfigMixin):
             res.update(code=0)
         else:
             raise ApiError("param error")
+    
