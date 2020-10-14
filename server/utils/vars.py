@@ -29,3 +29,9 @@ HTK = rsp("config", "hookthirds")
 
 #: Hook temp load time(every process) -> string
 HLTK = rsp("config", "hookloadtime")
+
+#: Token Index(token in UK) -> hash(token: user)
+TK = rsp("tokens")
+
+#: cache list.json result for picbed-awesome
+CTHK = rsp("cache", "hookthirds", "awesome")

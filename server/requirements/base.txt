@@ -1,6 +1,6 @@
 Flask>=1.0.0
 click>=7.0
-redis>3.0.0
+redis>=3.5.0
 requests>2.0.0
 user_agents>=2.0
 itsdangerous>0.22

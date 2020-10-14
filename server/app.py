@@ -26,7 +26,9 @@ __email__ = 'staugur@saintic.com'
 __date__ = '2019-12-20'
 __doc__ = 'Flask-based web self-built pictures bed'
 
+#: require py3.6+
 raise_if_less_version()
+
 app = Flask(__name__)
 app.response_class = JsonResponse
 app.config.update(

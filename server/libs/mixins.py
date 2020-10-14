@@ -8,18 +8,19 @@
 """
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from typing import Any, Mapping, Dict, NoReturn, Optional, Union
+from redis.exceptions import RedisError
 from utils.storage import rc
-from utils.vars import AK, UK, SCK, HCK
-from utils.tool import get_now, sha256, hmac_sha256, generate_random
+from utils.vars import AK, UK, SCK, HCK, TK
+from utils.tool import get_now, sha256, hmac_sha256, generate_random, is_true
 from utils._compat import text_type
-from typing import Any
 from config import GLOBAL
 
 
-class ConfigMixin():
+class AdminConfigMixin():
     """System/hook config"""
 
-    def get_sys_cfgs(self) -> dict:
+    def get_sys_cfgs(self) -> Dict[str, Any]:
         '''system config(admin site)'''
         return rc.hgetall(SCK)
 
@@ -27,27 +28,36 @@ class ConfigMixin():
         '''fetch system config someone'''
         return rc.hget(SCK, name)
 
-    def set_sys_cfg(self, **mapping: dict) -> None:
+    def set_sys_cfg(self, **mapping: Mapping) -> NoReturn:
         '''set system config'''
         if mapping and isinstance(mapping, dict):
             #: SCK format(hash):
             #: key -> form field name, value -> form field value
             rc.hmset(SCK, mapping)
 
-    def get_hook_cfgs(self) -> dict:
+    def get_hook_cfgs(self) -> Dict[str, Any]:
         '''all hook config'''
         return rc.hgetall(HCK)
 
-    def get_hook_cfg(self, hook_name: str) -> dict:
+    def get_hook_cfg(self, hook_name: str) -> Dict[str, Any]:
         '''hook config'''
         return rc.hget(HCK, hook_name)
 
-    def set_hook_cfg(self, hook_name: str, **mapping: dict) -> None:
+    def set_hook_cfg(self, hook_name: str, **mapping: Mapping) -> NoReturn:
         '''set hook config'''
         if mapping and isinstance(mapping, dict):
             #: HCK format(hash):
             #: key -> hook name, value -> hook json data
             rc.hset(HCK, hook_name, mapping)
+
+
+class AdminMixin():
+    """Admin Api"""
+    pass
+
+
+class UserConfigMixin():
+    pass
 
 
 class UserMixin():
@@ -58,13 +68,13 @@ class UserMixin():
         pipe.sismember(AK, username).exists(UK(username))
         return pipe.execute() == [True, 1]
 
-    def get_userinfo(self, username: str) -> dict:
+    def get_userinfo(self, username: str) -> Dict[str, Any]:
         return rc.hmget(UK(username), (
             'username', 'is_admin', 'avatar', 'email',
             'nickname', 'ctime', 'status', 'token'
         ))
 
-    def get_user_setting(self, username: str) -> dict:
+    def get_user_setting(self, username: str) -> Dict[str, Any]:
         data = rc.hgetall(UK(username))
         return {k: v for k, v in data.items() if k.startswith("ucfg_")}
 
@@ -85,7 +95,7 @@ class EnDeMixin():
         )
         return urlsafe_b64encode(sid.encode("utf-8")).decode("utf-8")
 
-    def is_valid_cookie(self, sid: str = None) -> bool:
+    def is_valid_cookie(self, sid: Optional[str]) -> bool:
         '''Parse Login State(Authorization Cookie) for :meth:`gen_cookie`'''
         ok = False
         try:
@@ -107,11 +117,42 @@ class EnDeMixin():
                     ok = True
         return ok
 
-    def is_valid_token(self):
-        pass
+    def is_valid_token(self, token: Optional[str]) -> bool:
+        '''parse token string(Api login) for :meth:`gen_token`'''
+        ok = False
+        try:
+            if not token:
+                raise ValueError
+            token2usr = rc.hget(TK, token)
+            token = urlsafe_b64decode(token)
+            if not isinstance(token, text_type):
+                token = token.decode("utf-8")
+            rdm, usr, ctime, sig = token.split(".")
+            ctime = int(ctime)
+            assert len(rdm) >= 1
+        except (TypeError, ValueError, AttributeError, Exception):
+            pass
+        else:
+            if token2usr and token2usr == usr:
+                userinfo = rc.hgetall(UK(usr))
+                userstatus = int(userinfo.get("status", 1))
+                if userinfo and userstatus != 0:
+                    pwd = userinfo.pop("password", None)
+                    tkey = userinfo.pop("token_key", None)
+                    if hmac_sha256(pwd, usr) == sig or \
+                            (tkey and hmac_sha256(tkey, usr) == sig):
+                        ok = True
+                        #: If the token authentication is passed, judge
+                        #: whether the ordinary user is forbidden to login
+                        if is_true(rc.hget(SCK, "disable_login")) and \
+                                not is_true(userinfo.get("is_admin")):
+                            ok = False
+        return ok
 
     def gen_token(self, usr: str, token_secret_key: str) -> str:
         """Permanent token generated for Api login"""
+        if not usr or not token_secret_key:
+            raise ValueError("param error")
         return urlsafe_b64encode(
             ("%s.%s.%s.%s" % (
                 generate_random(),
@@ -122,6 +163,22 @@ class EnDeMixin():
         ).decode("utf-8")
 
 
-class AdminMixin():
-    """Admin Api"""
-    pass
+class CacheMixin():
+
+    def set_cache(self, key: str, value: Any, ttl: int = 3600) -> bool:
+        if not key or not value:
+            raise ValueError("param error")
+        pipe = rc.pipeline()
+        pipe.set(key, value)
+        if ttl > 0:
+            pipe.expire(key, ttl)
+        try:
+            pipe.execute()
+        except RedisError:
+            return False
+        else:
+            return True
+
+    def get_cache(self, key: str) -> Union[None, Any]:
+        value = rc.get(key)
+        return value if value else None
