@@ -69,11 +69,6 @@ ALLOWED_EXTS = ("png", "jpg", "jpeg", "gif", "bmp", "webp")
 ALLOWED_HTTP_METHOD = ("GET", "POST", "PUT", "DELETE", "HEAD")
 
 
-def rsp(*args: list) -> str:
-    '''Use the prefix 'picbed:' to generate redis key'''
-    return "picbed:" + ":".join(map(str, args))
-
-
 def sha1(text: str) -> str:
     if isinstance(text, text_type):
         text = text.encode("utf-8")

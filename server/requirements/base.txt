@@ -1,4 +1,5 @@
 Flask>=1.0.0
+git+https://github.com/cenobites/flask-jsonrpc.git@master
 click>=7.0
 redis>=3.5.0
 requests>2.0.0

@@ -14,9 +14,9 @@ from utils.storage import rc
 from utils.tool import is_true
 from utils.web import check_username
 from utils.exceptions import ApiError
-from libs.mixins import UserMixin, EnDeMixin, ConfigMixin
+from libs.mixins import UserMixin, UserConfigMixin, EnDeMixin
 
-class User(UserMixin, EnDeMixin, ConfigMixin):
+class User(UserMixin, UserConfigMixin, EnDeMixin):
 
     def register(self, username:str, password:str, ) -> dict:
         if username and password:

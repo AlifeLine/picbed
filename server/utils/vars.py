@@ -7,7 +7,11 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
-from .tool import rsp
+
+def rsp(*args: list) -> str:
+    '''Use the prefix 'picbed:' to generate redis key'''
+    return "picbed:" + ":".join(map(str, args))
+
 
 #: username index key -> set
 AK = rsp("accounts")

@@ -10,7 +10,7 @@
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from typing import Any, Mapping, Dict, NoReturn, Optional, Union
 from redis.exceptions import RedisError
-from utils.storage import rc
+from utils.storage import rc, get_site_configs, get_site_config
 from utils.vars import AK, UK, SCK, HCK, TK
 from utils.tool import get_now, sha256, hmac_sha256, generate_random, is_true
 from utils._compat import text_type
@@ -22,11 +22,11 @@ class AdminConfigMixin():
 
     def get_sys_cfgs(self) -> Dict[str, Any]:
         '''system config(admin site)'''
-        return rc.hgetall(SCK)
+        return get_site_configs()
 
     def get_sys_cfg(self, name: str) -> Any:
         '''fetch system config someone'''
-        return rc.hget(SCK, name)
+        return get_site_config(name)
 
     def set_sys_cfg(self, **mapping: Mapping) -> NoReturn:
         '''set system config'''

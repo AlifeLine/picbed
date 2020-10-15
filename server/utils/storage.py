@@ -8,10 +8,11 @@
 """
 
 import json
-from typing import Any, Mapping
+from typing import Any, Mapping, Dict
 from redis import Redis
 from redis.client import list_or_args, Pipeline
 from config import REDIS
+from .vars import SCK
 
 __all__ = ["rc"]
 
@@ -108,3 +109,11 @@ def from_url(url, **kwargs):
 
 
 rc = from_url(REDIS, decode_responses=True)
+
+
+def get_site_configs() -> Dict[str, Any]:
+    return rc.hgetall(SCK)
+
+
+def get_site_config(name: str) -> Any:
+    return rc.hget(SCK, name)

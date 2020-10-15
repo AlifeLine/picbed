@@ -9,20 +9,16 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
-from flask import Flask, g, request, render_template, jsonify
-from views import front_bp, api_bp
+from flask import Flask, g, request
+from flask_jsonrpc import JSONRPC
+from views import front_bp
 from utils.tool import Attribute, is_true, parse_valid_comma, err_logger, \
     timestamp_to_timestring, raise_if_less_version
-from utils.web import get_site_config, JsonResponse, default_login_auth, \
-    get_redirect_url, change_userinfo, rc, get_page_msg, get_push_msg, dfr
-from utils.exceptions import ApiError, PageError
-from redis.exceptions import RedisError
+from utils.web import default_login_auth, change_userinfo
 from libs.hook import HookManager
 from config import GLOBAL
-from version import __version__
 
-__author__ = 'staugur'
-__email__ = 'staugur@saintic.com'
+__author__ = 'staugur <staugur@saintic.com>'
 __date__ = '2019-12-20'
 __doc__ = 'Flask-based web self-built pictures bed'
 
@@ -30,7 +26,6 @@ __doc__ = 'Flask-based web self-built pictures bed'
 raise_if_less_version()
 
 app = Flask(__name__)
-app.response_class = JsonResponse
 app.config.update(
     SECRET_KEY=GLOBAL["SecretKey"],
     MAX_UPLOAD=GLOBAL["MaxUpload"],
@@ -38,19 +33,13 @@ app.config.update(
     DOCS_BASE_URL="https://picbed.rtfd.vip",
     UPLOAD_FOLDER="upload",
 )
+jsonrpc = JSONRPC(app, '/api', enable_web_browsable_api=True)
+
+jsonrpc.register_view_function(func)
 
 hm = HookManager(app)
 app.register_blueprint(front_bp)
-app.register_blueprint(api_bp, url_prefix="/api")
 
-
-@app.context_processor
-def gtv():
-    return {
-        "Version": __version__, "Doc": __doc__, "is_true": is_true,
-        "timestamp_to_timestring": timestamp_to_timestring,
-        "get_page_msg": get_page_msg, "get_push_msg": get_push_msg,
-    }
 
 
 @app.before_request
@@ -84,42 +73,3 @@ def after_request(res):
     res.headers['X-Content-Type-Options'] = 'nosniff'
     res.headers['X-Frame-Options'] = 'SAMEORIGIN'
     return res
-
-
-@app.errorhandler(500)
-@app.errorhandler(413)
-@app.errorhandler(405)
-@app.errorhandler(404)
-@app.errorhandler(403)
-@app.errorhandler(401)
-@app.errorhandler(400)
-def handle_error(e):
-    if getattr(e, "code", None) == 500:
-        err_logger.error(e, exc_info=True)
-    code = e.code
-    name = e.name
-    if request.path.startswith("/api/"):
-        return jsonify(dict(msg=name, code=code)), code
-    return render_template("public/error.html", code=code, name=name), code
-
-
-@app.errorhandler(ApiError)
-def handle_api_error(e):
-    response = jsonify(dfr(e.to_dict()))
-    response.status_code = e.status_code
-    return response
-
-
-@app.errorhandler(RedisError)
-def handle_api_error(e):
-    return jsonify(dfr(
-        dict(code=2, msg="Program data storage service error")
-    ))
-
-
-@app.errorhandler(PageError)
-def handle_page_error(e):
-    resp = dfr(e.to_dict())
-    return render_template(
-        "public/error.html", code=resp["code"], name=resp["msg"]
-    ), e.status_code

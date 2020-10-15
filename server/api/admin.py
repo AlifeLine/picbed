@@ -9,12 +9,14 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
+from typing import Mapping
 from utils.exceptions import ApiError
 from utils.vars import CTHK
 from utils.storage import rc
 from utils.web import try_proxy_request
+from libs.mixins import CacheMixin, AdminMixin, AdminConfigMixin
 
-class Admin():
+class Admin(CacheMixin, AdminMixin, AdminConfigMixin):
 
 
     def list_third_hooks(self,
@@ -27,7 +29,7 @@ class Admin():
                 raise ValueError
         except (ValueError, TypeError):
             raise ApiError("Parameter error")
-        data = rc.get(CTHK)
+        data = self.get_cache(CTHK)
         if no_fresh and data:
             res.update(code=0, data=data)
         else:
@@ -44,7 +46,7 @@ class Admin():
             else:
                 data = r.json()
                 res.update(code=0, data=data)
-                rc.pipeline().set(CTHK, data).expire(CTHK, 3600 * 6).execute()
+                self.set_cache(CTHK, data, 3600*6)
         if res["code"] == 0:
             def fmt(i, pkgs):
                 pkg = i.get("pypi", "").replace("$name", i["name"])
@@ -122,4 +124,36 @@ class Admin():
                 pipe.execute()
         if res["code"] == 0:
             res["show_upgrade"] = less_latest_tag(res["data"]["tag_name"])
+
+
+
+    def set_site_config(self,mapping):
+        """设置站点信息"""
+        ALLOWED_TAGS = ['a', 'abbr', 'b', 'i', 'code', 'p', 'br', 'h3', 'h4']
+        ALLOWED_ATTRIBUTES = {
+            'a': ['href', 'title', 'target'],
+            'abbr': ['title'],
+            '*': ['style'],
+        }
+        ALLOWED_STYLES = ['color']
+        upload_beforehtml = mapping.get("upload_beforehtml") or ""
+        bulletin = mapping.get("bulletin") or ""
+        if upload_beforehtml:
+            mapping["upload_beforehtml"] = bleach_html(
+                upload_beforehtml,
+                ALLOWED_TAGS, ALLOWED_ATTRIBUTES, ALLOWED_STYLES
+            )
+        if bulletin:
+            ALLOWED_TAGS.append("img")
+            ALLOWED_ATTRIBUTES["img"] = [
+                'title', 'alt', 'src', 'width', 'height'
+            ]
+            mapping["bulletin"] = bleach_html(
+                bulletin,
+                ALLOWED_TAGS, ALLOWED_ATTRIBUTES, ALLOWED_STYLES
+            )
+        s = get_storage()
+        cfg = s.get("siteconfig") or {}
+        cfg.update(mapping)
+        s.set("siteconfig", cfg)
 

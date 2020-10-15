@@ -27,8 +27,7 @@ from functools import partial
 from subprocess import call, check_output
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, \
     SignatureExpired, BadSignature
-from libs.storage import get_storage
-from .tool import logger, get_now, rsp, sha256, username_pat, \
+from .tool import logger, get_now, sha256, username_pat, \
     parse_valid_comma, parse_data_uri, format_apires, url_pat, ALLOWED_EXTS, \
     parse_valid_verticaline, parse_valid_colon, is_true, is_venv, gen_ua, \
     check_to_addr, is_all_fail, bleach_html, try_request, comma_pat, \
@@ -164,45 +163,6 @@ def change_userinfo(userinfo):
             status=int(userinfo.get("status", 1)),
         )
     return userinfo
-
-
-def get_site_config():
-    """获取站点配置"""
-    s = get_storage()
-    cfg = s.get("siteconfig") or {}
-    return cfg
-
-
-def set_site_config(mapping):
-    """设置站点信息"""
-    if mapping and isinstance(mapping, dict):
-        ALLOWED_TAGS = ['a', 'abbr', 'b', 'i', 'code', 'p', 'br', 'h3', 'h4']
-        ALLOWED_ATTRIBUTES = {
-            'a': ['href', 'title', 'target'],
-            'abbr': ['title'],
-            '*': ['style'],
-        }
-        ALLOWED_STYLES = ['color']
-        upload_beforehtml = mapping.get("upload_beforehtml") or ""
-        bulletin = mapping.get("bulletin") or ""
-        if upload_beforehtml:
-            mapping["upload_beforehtml"] = bleach_html(
-                upload_beforehtml,
-                ALLOWED_TAGS, ALLOWED_ATTRIBUTES, ALLOWED_STYLES
-            )
-        if bulletin:
-            ALLOWED_TAGS.append("img")
-            ALLOWED_ATTRIBUTES["img"] = [
-                'title', 'alt', 'src', 'width', 'height'
-            ]
-            mapping["bulletin"] = bleach_html(
-                bulletin,
-                ALLOWED_TAGS, ALLOWED_ATTRIBUTES, ALLOWED_STYLES
-            )
-        s = get_storage()
-        cfg = s.get("siteconfig") or {}
-        cfg.update(mapping)
-        s.set("siteconfig", cfg)
 
 
 def check_username(usr):
